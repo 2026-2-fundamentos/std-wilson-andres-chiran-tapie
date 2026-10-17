@@ -1,8 +1,11 @@
-def pregunta_01():
 
-    raise NotImplementedError
+def pregunta_01():
+    return "Hola mundo cruel!"
 
 
 def pregunta_02():
+    return "Hello cruel world!"
 
-    raise NotImplementedError
+
+print(pregunta_01())
+print(pregunta_02())
