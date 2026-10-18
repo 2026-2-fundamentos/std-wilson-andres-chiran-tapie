@@ -1,186 +1,162 @@
 import glob
-import os
+import os.path
 import shutil
 import string
 import time
-from pathlib import Path
+
+ACTIVITY_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_FOLDER = os.path.join(ACTIVITY_FOLDER, "data")
+INPUT_FOLDER = os.path.join(ACTIVITY_FOLDER, "temp", "input")
+OUTPUT_FOLDER = os.path.join(ACTIVITY_FOLDER, "temp", "output")
+SUBMISSION_FOLDER = os.path.join(ACTIVITY_FOLDER, "submission")
 
 
-# ============================================================
-# CONFIGURACIÓN DE RUTAS
-# ============================================================
 
-ACTIVITY_FOLDER = Path(__file__).resolve().parents[1]
+# La carpeta input/ debe existir y estar vacia.
+# -----------------------------------------------------------------------------
 
-DATA_FOLDER = ACTIVITY_FOLDER / "data"
-INPUT_FOLDER = ACTIVITY_FOLDER / "temp" / "input"
-OUTPUT_FOLDER = ACTIVITY_FOLDER / "temp" / "output"
-SUBMISSION_FOLDER = ACTIVITY_FOLDER / "submission"
-
-
-# ============================================================
-# FUNCIONES AUXILIARES
-# ============================================================
-
-def prepare_empty_folder(folder):
-    """Crea una carpeta si no existe y elimina su contenido."""
-    folder.mkdir(parents=True, exist_ok=True)
-
-    for item in folder.iterdir():
-        if item.is_file() or item.is_symlink():
-            item.unlink()
-        elif item.is_dir():
-            shutil.rmtree(item)
+if os.path.exists(INPUT_FOLDER):
+    for file in glob.glob(f"{INPUT_FOLDER}/*"):
+        os.remove(file)
+else:
+    os.makedirs(INPUT_FOLDER)
 
 
-# ============================================================
-# 1. PREPARAR CARPETA DE ENTRADA
-# ============================================================
+    
+# Genera copias de los archivos en raw/
+# -----------------------------------------------------------------------------
 
-prepare_empty_folder(INPUT_FOLDER)
+n = 1000
 
+for file in glob.glob(f"{DATA_FOLDER}/*"):
 
-# ============================================================
-# 2. GENERAR COPIAS DE LOS ARCHIVOS DE DATA
-# ============================================================
+    with open(file, "r", encoding="utf-8") as f:
+        text = f.read()
 
-N = 1000
+    for i in range(1, n + 1):
 
-if not DATA_FOLDER.exists():
-    raise FileNotFoundError(
-        f"No existe la carpeta de datos: {DATA_FOLDER}"
-    )
+        raw_filename_with_extension = os.path.basename(file)
 
-source_files = sorted(
-    file for file in DATA_FOLDER.iterdir()
-    if file.is_file()
-)
+        raw_filename_without_extension = os.path.splitext(raw_filename_with_extension)[
+            0
+        ]
 
-if not source_files:
-    raise FileNotFoundError(
-        f"No hay archivos dentro de: {DATA_FOLDER}"
-    )
+        new_filename = f"{raw_filename_without_extension}_{i:05d}.txt"
 
-for file in source_files:
-    text = file.read_text(encoding="utf-8")
+        with open(f"{INPUT_FOLDER}/{new_filename}", "w", encoding="utf-8") as f2:
+            f2.write(text)
 
-    filename_without_extension = file.stem
-
-    for i in range(1, N + 1):
-        new_filename = f"{filename_without_extension}_{i:05d}.txt"
-        destination = INPUT_FOLDER / new_filename
-
-        destination.write_text(text, encoding="utf-8")
-
-
-# ============================================================
-# 3. LECTURA DE LOS ARCHIVOS
-# ============================================================
+            
+  
+# Lectura de los archivos
+# -----------------------------------------------------------------------------
 
 start_time = time.time()
 
 sequence = []
-
-files = sorted(
-    file for file in INPUT_FOLDER.iterdir()
-    if file.is_file()
-)
-
+files = glob.glob(f"{INPUT_FOLDER}/*")
 for file in files:
-    with file.open("r", encoding="utf-8") as f:
+    with open(file, "r", encoding="utf-8") as f:
         for line in f:
-            sequence.append((str(file), line))
+            sequence.append((file, line))
+            
 
-
-# ============================================================
-# 4. MAPPER: CONTAR CADA PALABRA
-# ============================================================
+            
+            
+            
+            
+# Mapper
+# -----------------------------------------------------------------------------
 
 pairs_sequence = []
-
 for _, line in sequence:
     line = line.lower()
-    line = line.translate(
-        str.maketrans("", "", string.punctuation)
-    )
+    line = line.translate(str.maketrans("", "", string.punctuation))
     line = line.replace("\n", "")
-
     words = line.split()
-
-    pairs_sequence.extend(
-        (word, 1) for word in words
-    )
-
-
-# ============================================================
-# 5. SHUFFLE AND SORT: ORDENAR LAS PALABRAS
-# ============================================================
+    pairs_sequence.extend([(word, 1) for word in words])
+    
+    
+    
+    
+# Shuffle and sort
+# -----------------------------------------------------------------------------
 
 pairs_sequence = sorted(pairs_sequence)
 
 
-# ============================================================
-# 6. REDUCER: SUMAR LAS REPETICIONES
-# ============================================================
+
+
+
+# Reducer
+# -----------------------------------------------------------------------------
 
 result = []
-
 for key, value in pairs_sequence:
     if result and result[-1][0] == key:
-        result[-1] = (
-            key,
-            result[-1][1] + value
-        )
+        result[-1] = (key, result[-1][1] + value)
     else:
         result.append((key, value))
 
 
-# ============================================================
-# 7. PREPARAR LA CARPETA DE SALIDA
-# ============================================================
 
-prepare_empty_folder(OUTPUT_FOLDER)
+# La carpeta de salida debe estar vacia
+# -----------------------------------------------------------------------------
 
+if os.path.exists(OUTPUT_FOLDER):
+    for file in glob.glob(f"{OUTPUT_FOLDER}/*"):
+        os.remove(file)
+else:
+    os.makedirs(OUTPUT_FOLDER)    
+        
+        
+        
 
-# ============================================================
-# 8. GUARDAR LOS RESULTADOS
-# ============================================================
+        
+        
+        
 
-output_file = OUTPUT_FOLDER / "part-00000"
+# -----------------------------------------------------------------------------
 
-with output_file.open("w", encoding="utf-8") as f:
+with open(f"{OUTPUT_FOLDER}/part-00000", "w", encoding="utf-8") as f:
     for key, value in result:
         f.write(f"{key}\t{value}\n")
 
+        
+        
+     
+        
+        
+        
+# Marcador de éxito
+# -----------------------------------------------------------------------------
 
-# ============================================================
-# 9. CREAR EL MARCADOR DE ÉXITO
-# ============================================================
+with open(f"{OUTPUT_FOLDER}/_SUCCESS", "w", encoding="utf-8") as f:
+    f.write("")        
+        
 
-success_file = OUTPUT_FOLDER / "_SUCCESS"
-success_file.write_text("", encoding="utf-8")
+        
 
+          
+        
+# Copia el resultado desde HDFS simulado al disco local
+# -----------------------------------------------------------------------------
 
-# ============================================================
-# 10. COPIAR LOS RESULTADOS A SUBMISSION
-# ============================================================
+if os.path.exists(SUBMISSION_FOLDER):
+    for file in glob.glob(f"{SUBMISSION_FOLDER}/*"):
+        os.remove(file)
+else:
+    os.makedirs(SUBMISSION_FOLDER)
 
-prepare_empty_folder(SUBMISSION_FOLDER)
+for file in glob.glob(f"{OUTPUT_FOLDER}/*"):
+    shutil.copy2(file, SUBMISSION_FOLDER)
+    
+    
 
-for file in OUTPUT_FOLDER.iterdir():
-    if file.is_file():
-        shutil.copy2(file, SUBMISSION_FOLDER / file.name)
-
-
-# ============================================================
-# 11. REPORTE FINAL
-# ============================================================
+    
+    
+# Reporte de tiempo de ejecución
+# -----------------------------------------------------------------------------
 
 end_time = time.time()
-
-print("Proceso MapReduce finalizado correctamente.")
-print(f"Archivos procesados: {len(files)}")
-print(f"Palabras contabilizadas: {sum(value for _, value in result)}")
-print(f"Palabras diferentes: {len(result)}")
-print(f"Resultados guardados en: {SUBMISSION_FOLDER}")
 print(f"Tiempo de ejecución: {end_time - start_time:.2f} segundos")
